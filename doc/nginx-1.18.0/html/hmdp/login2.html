@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>HM DianPing</title>
+  <link href="./css/login.css" rel="stylesheet">
+  <link rel="stylesheet" href="./css/element.css">
+</head>
+<body>
+<div id="app">
+  <div class="login-container">
+    <div class="header">
+      <div class="header-back-btn" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+      <div class="header-title">Password Login</div>
+    </div>
+    <div class="content">
+      <div class="login-form">
+        <el-input placeholder="Phone" v-model="form.phone"></el-input>
+        <div style="height: 5px"></div>
+        <el-input placeholder="Password" v-model="form.password" show-password></el-input>
+        <div style="text-align: center; color: #8c939d; margin: 5px 0"><a href="/login.html">Switch to code login</a></div>
+        <el-button @click="login" style="width: 100%; background-color:#f63; color: #fff;">Login</el-button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: "#app",
+    data: {
+      form: {}
+    },
+    methods: {
+      login() {
+        if (!this.form.phone || !this.form.password) {
+          this.$message.error("Phone and password are required");
+          return;
+        }
+        axios.post("/user/login", this.form)
+          .then(({data, headers}) => {
+            util.saveAuthFromResponse(data, headers);
+            location.href = "/info.html";
+          })
+          .catch(err => this.$message.error(err));
+      },
+      goBack() {
+        history.back();
+      }
+    }
+  })
+</script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>Notifications</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/main.css" rel="stylesheet">
+  <style type="text/css">
+      .page {
+          height: 92%;
+          display: flex;
+          flex-direction: column;
+          background: #f7f8fa;
+      }
+      .header {
+          width: 100%;
+          line-height: 40px;
+          height: 6%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 2px solid #ff6633;
+          background: #fff;
+      }
+      .header-back-btn {
+          width: 10%;
+          color: #ff6633;
+          font-size: 22px;
+      }
+      .header-title {
+          width: 80%;
+          text-align: center;
+          font-size: 18px;
+      }
+      .header-extra {
+          width: 10%;
+          text-align: center;
+          color: #999;
+      }
+      .summary {
+          margin: 12px;
+          padding: 12px 14px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #fff4ed, #fff);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+      }
+      .summary-title {
+          font-size: 14px;
+          color: #666;
+      }
+      .summary-value {
+          margin-top: 6px;
+          font-size: 24px;
+          font-weight: bold;
+          color: #ff6633;
+      }
+      .list {
+          flex: 1;
+          overflow-y: auto;
+          padding: 0 12px 12px;
+      }
+      .notification-item {
+          display: flex;
+          align-items: flex-start;
+          padding: 14px 12px;
+          margin-bottom: 10px;
+          border-radius: 12px;
+          background: #fff;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+      }
+      .notification-item.unread {
+          border-left: 4px solid #ff6633;
+      }
+      .notification-avatar {
+          width: 42px;
+          height: 42px;
+          margin-right: 10px;
+      }
+      .notification-avatar img {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+      }
+      .notification-body {
+          flex: 1;
+      }
+      .notification-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+      }
+      .notification-name {
+          font-size: 14px;
+          font-weight: bold;
+          color: #333;
+      }
+      .notification-type {
+          padding: 2px 8px;
+          border-radius: 10px;
+          font-size: 10px;
+          color: #ff6633;
+          background: #fff1ea;
+      }
+      .notification-content {
+          margin-top: 8px;
+          font-size: 13px;
+          line-height: 18px;
+          color: #555;
+      }
+      .notification-bottom {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 10px;
+          font-size: 12px;
+          color: #999;
+      }
+      .empty {
+          margin: 40px 12px 0;
+          padding: 32px 12px;
+          text-align: center;
+          color: #999;
+          border-radius: 12px;
+          background: #fff;
+      }
+      .load-more {
+          width: calc(100% - 24px);
+          margin: 0 12px 12px;
+      }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="page">
+    <div class="header">
+      <div class="header-back-btn" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+      <div class="header-title">Notifications</div>
+      <div class="header-extra">{{total}}</div>
+    </div>
+    <div class="summary">
+      <div class="summary-title">Unread messages</div>
+      <div class="summary-value">{{unreadCount}}</div>
+    </div>
+    <div class="list">
+      <div v-if="!notifications.length" class="empty">No notifications yet.</div>
+      <div v-for="item in notifications" :key="item.id" class="notification-item" :class="{ unread: item.readStatus === 0 }" @click="markAsRead(item)">
+        <div class="notification-avatar">
+          <img :src="item.fromUserIcon || '/imgs/icons/default-icon.png'" alt="">
+        </div>
+        <div class="notification-body">
+          <div class="notification-top">
+            <div class="notification-name">{{item.fromUserName || 'System'}}</div>
+            <div class="notification-type">{{typeText(item.type)}}</div>
+          </div>
+          <div class="notification-content">{{item.content}}</div>
+          <div class="notification-bottom">
+            <span>{{util.formatDateTime(item.createTime)}}</span>
+            <span>{{item.readStatus === 0 ? 'Unread' : 'Read'}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <el-button v-if="canLoadMore" class="load-more" @click="loadMore" plain type="warning">Load more</el-button>
+  </div>
+  <foot-bar :active-btn="3"></foot-bar>
+</div>
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script src="./js/footer.js"></script>
+<script>
+  const app = new Vue({
+    el: "#app",
+    data: {
+      util,
+      current: 1,
+      total: 0,
+      unreadCount: 0,
+      notifications: []
+    },
+    computed: {
+      canLoadMore() {
+        return this.notifications.length < this.total;
+      }
+    },
+    created() {
+      this.loadUnreadCount();
+      this.loadNotifications(true);
+    },
+    methods: {
+      goBack() {
+        history.back();
+      },
+      typeText(type) {
+        if (type === "BLOG_LIKE") return "Like";
+        if (type === "BLOG_COMMENT") return "Comment";
+        if (type === "FOLLOW") return "Follow";
+        return "Notice";
+      },
+      loadUnreadCount() {
+        axios.get("/notification/unread/count")
+          .then(({data}) => {
+            this.unreadCount = Number(data) || 0;
+          })
+          .catch((err) => this.$message.error(err));
+      },
+      loadNotifications(reset) {
+        const nextPage = reset ? 1 : this.current + 1;
+        axios.get("/notification", { params: { current: nextPage } })
+          .then(({data, raw}) => {
+            this.current = nextPage;
+            this.total = raw.total || 0;
+            this.notifications = reset ? data : this.notifications.concat(data);
+          })
+          .catch((err) => this.$message.error(err));
+      },
+      loadMore() {
+        this.loadNotifications(false);
+      },
+      markAsRead(item) {
+        if (item.readStatus === 1) {
+          return;
+        }
+        axios.put("/notification/read/" + item.id)
+          .then(() => {
+            item.readStatus = 1;
+            this.unreadCount = Math.max(0, this.unreadCount - 1);
+          })
+          .catch((err) => this.$message.error(err));
+      }
+    }
+  });
+</script>
+</body>
+</html>
