@@ -88,15 +88,17 @@
 <script>
   const app = new Vue({
     el: "#app",
-    data: {
-      util,
-      user: "",
-      loginUser: {},
-      activeName: "1",
-      info: {},
-      blogs: [],
-      followed: false, // 是否关注了
-      commonFollows: [], // 共同关注
+    data() {
+      return {
+        util,
+        user: "",
+        loginUser: {},
+        activeName: "1",
+        info: {},
+        blogs: [],
+        followed: false, // 是否关注了
+        commonFollows: [], // 共同关注
+      };
     },
     created() {
       this.queryUser();

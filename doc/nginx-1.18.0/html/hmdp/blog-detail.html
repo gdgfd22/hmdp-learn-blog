@@ -20,6 +20,28 @@
     .liked{
 
     }
+    .comment-input-area {
+        padding: 10px;
+        background-color: #f9f9f9;
+    }
+    .comment-input-box {
+        background-color: white;
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .comment-submit {
+        margin-top: 10px;
+        text-align: right;
+    }
+    .blog-comments-list {
+        padding: 10px;
+    }
+    .comments-list-head {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -99,7 +121,7 @@
             <div class="comment-user">叶小乙 <span>Lv5</span></div>
             <div style="display: flex;">
               打分
-              <el-rate disabled v-model="4.5"></el-rate>
+              <el-rate disabled :value="4.5"></el-rate>
             </div>
             <div style="padding: 5px 0; font-size: 14px">
               某平台上买的券，价格可以当工作餐吃，虽然价格便宜，但是这家店一点都没有...
@@ -131,6 +153,46 @@
       </div>
     </div>
     <div class="blog-divider"></div>
+    <!-- 评论输入区域 -->
+    <div class="comment-input-area" v-if="user.id">
+      <div class="comment-input-box">
+        <el-input
+          v-model="commentContent"
+          type="textarea"
+          :rows="2"
+          placeholder="写下你的评论..."
+        ></el-input>
+        <div class="comment-submit">
+          <el-button type="primary" @click="submitComment">提交评论</el-button>
+        </div>
+      </div>
+    </div>
+    <!-- 评论列表 -->
+    <div class="blog-comments-list">
+      <div class="comments-list-head">
+        <div>全部评论 <span>（{{comments.length}}）</span></div>
+      </div>
+      <div class="comment-list">
+        <div class="comment-box" v-for="comment in comments" :key="comment.id">
+          <div class="comment-icon">
+            <img :src="comment.userIcon || '/imgs/icons/default-icon.png'" alt="">
+          </div>
+          <div class="comment-info">
+            <div class="comment-user">{{comment.userName}}</div>
+            <div style="padding: 5px 0; font-size: 14px">
+              {{comment.content}}
+            </div>
+            <div>
+              {{formatTime(new Date(comment.createTime))}}
+            </div>
+          </div>
+        </div>
+        <div v-if="comments.length === 0" style="text-align: center; padding: 20px; color: #999;">
+          暂无评论，快来抢沙发吧！
+        </div>
+      </div>
+    </div>
+    <div class="blog-divider"></div>
   </div>
   <div class="foot">
     <div class="foot-box">
@@ -144,7 +206,7 @@
     <div style="width: 40%">
     </div>
     <div class="foot-box">
-      <div class="foot-view"><i class="el-icon-chat-square"></i></div>
+      <div class="foot-view" @click="showCommentInput = !showCommentInput"><i class="el-icon-chat-square"></i></div>
     </div>
   </div>
 </div>
@@ -161,32 +223,49 @@
   }
   const app = new Vue({
     el: "#app",
-    data: {
-      util,
-      blog: {},
-      shop: {},
-      likes: [],
-      user: {}, // 登录用户
-      followed: false, // 是否关注了
-      _width: 0,
-      duration: 300,
-      container: null,
-      items: [],
-      active: 0,
-      start: {
-        x: 0,
-        y: 0
-      },
-      move: {
-        x: 0,
-        y: 0
-      },
-      sensitivity: 60,
-      resistance: 0.3
+    data() {
+      return {
+        // 移除可能引起冲突的util对象
+        blog: {},
+        shop: {},
+        likes: [],
+        user: {}, // 登录用户
+        followed: false, // 是否关注了
+        _width: 0,
+        duration: 300,
+        container: null,
+        items: [],
+        active: 0,
+        start: {
+          x: 0,
+          y: 0
+        },
+        move: {
+          x: 0,
+          y: 0
+        },
+        sensitivity: 60,
+        resistance: 0.3,
+        // 精简的必要UI状态
+        visible: false,
+        message: '',
+        type: 'info',
+        dangerouslyUseHTMLString: false,
+        // 评论相关
+        commentContent: '',
+        comments: [],
+        showCommentInput: false
+      };
     },
     created() {
-      let id = util.getUrlParam("id");
+      let id = this.getUrlParam("id");
       this.queryBlogById(id);
+    },
+    mounted() {
+      // 确保DOM元素已挂载后再初始化
+      this.$nextTick(() => {
+        this.init();
+      });
     },
     methods: {
       init() {
@@ -217,8 +296,9 @@
             this.queryShopById(data.shopId)
             this.queryLikeList(id);
             this.queryLoginUser();
+            this.queryComments();
           })
-          .catch(this.$message.error)
+          .catch(err => this.$message.error(err))
       },
       queryShopById(shopId) {
         axios.get("/shop/" + shopId)
@@ -226,12 +306,12 @@
             data.image = data.images.split(",")[0]
             this.shop = data
           })
-          .catch(this.$message.error)
+          .catch(err => this.$message.error(err))
       },
       queryLikeList(id){
         axios.get("/blog/likes/" + id)
           .then(({data}) => this.likes = data)
-          .catch(this.$message.error)
+          .catch(err => this.$message.error(err))
       },
       addLike(){
         axios.put("/blog/like/" +this.blog.id)
@@ -242,7 +322,7 @@
                 this.blog = data;
                 this.queryLikeList(this.blog.id);
               })
-              .catch(this.$message.error)
+              .catch(err => this.$message.error(err))
           })
           .catch(err => {
             this.$message.error(err)
@@ -251,7 +331,7 @@
       isFollowed(){
         axios.get("/follow/or/not/" + this.blog.userId)
           .then(({data}) => this.followed = data)
-          .catch(this.$message.error)
+          .catch(err => this.$message.error(err))
       },
       follow(){
         axios.put("/follow/" + this.blog.userId + "/" + !this.followed)
@@ -259,7 +339,7 @@
             this.$message.success(this.followed ? "已取消关注" : "已关注")
             this.followed = !this.followed
           })
-          .catch(this.$message.error)
+          .catch(err => this.$message.error(err))
       },
       formatTime(b) {
         return b.getFullYear() + "年" + (b.getMonth() + 1) + "月" + b.getDate() + "日 ";
@@ -327,6 +407,14 @@
           this.setTransform(distanceX)
         }
       },
+      getUrlParam(name) {
+        let reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+        let r = window.location.search.substr(1).match(reg);
+        if (r != null) {
+          return decodeURI(r[2]);
+        }
+        return "";
+      },
       moveEnd(e) {
         console.log('moveEnd')
         if (this.isMoving) {
@@ -380,6 +468,36 @@
         this.$emit('change', this.active)
         this.setTransition()
         this.setTransform()
+      },
+      // 获取评论列表
+      queryComments() {
+        axios.get("/blog-comments/of/blog", {
+            params: { blogId: this.blog.id }
+          })
+          .then(({ data }) => {
+            this.comments = data;
+          })
+          .catch(err => this.$message.error(err))
+      },
+      // 提交评论
+      submitComment() {
+        if (!this.commentContent.trim()) {
+          this.$message.error("评论内容不能为空");
+          return;
+        }
+        
+        const comment = {
+          blogId: this.blog.id,
+          content: this.commentContent
+        };
+        
+        axios.post("/blog-comments", comment)
+          .then(() => {
+            this.$message.success("评论成功");
+            this.commentContent = "";
+            this.queryComments();
+          })
+          .catch(err => this.$message.error(err))
       }
     }
   })

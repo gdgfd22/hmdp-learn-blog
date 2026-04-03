@@ -1,4 +1,4 @@
-Vue.component("footBar", {
+Vue.component("foot-bar", {
   template: `
     <div class="foot">
       <div class="foot-box" :class="{active: activeBtn === 1}" @click="toPage(1)">
@@ -25,42 +25,34 @@ Vue.component("footBar", {
       </div>
     </div>
   `,
+  props: ["activeBtn"],
   data() {
     return {
       unreadCount: 0
-    }
+    };
   },
-  props: ["activeBtn"],
   computed: {
     badgeText() {
       return this.unreadCount > 99 ? "99+" : this.unreadCount;
     }
   },
   created() {
-    if (util.hasAuth()) {
-      this.loadUnreadCount();
-    }
+    const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('token');
+    if (token) this.loadUnreadCount();
   },
   methods: {
     loadUnreadCount() {
       axios.get("/notification/unread/count")
-        .then(({data}) => {
-          this.unreadCount = Number(data) || 0;
-        })
-        .catch(() => {
-          this.unreadCount = 0;
-        });
+          .then(({data}) => { this.unreadCount = Number(data) || 0; })
+          .catch(() => { this.unreadCount = 0; });
     },
     toPage(i) {
-      if (i === 0) {
-        location.href = "/blog-edit.html";
-      } else if (i === 1) {
-        location.href = "/";
-      } else if (i === 3) {
-        location.href = "/notification.html";
-      } else if (i === 4) {
-        location.href = "/info.html";
+      switch(i) {
+        case 0: location.href = "/blog-edit.html"; break;
+        case 1: location.href = "/"; break;
+        case 3: location.href = "/notification.html"; break;
+        case 4: location.href = "/info.html"; break;
       }
     }
   }
-})
+});

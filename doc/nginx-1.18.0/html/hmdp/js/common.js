@@ -51,7 +51,7 @@ function saveAuthFromResponse(payload, headers) {
   if (expiresIn) {
     sessionStorage.setItem(EXPIRES_IN_KEY, expiresIn);
   }
-}
+};
 
 function clearAuth() {
   sessionStorage.removeItem(ACCESS_TOKEN_KEY);
@@ -165,12 +165,12 @@ axios.defaults.paramsSerializer = function(params) {
 }
 
 const util = {
-  commonURL,
-  saveAuthFromResponse,
-  clearAuth,
-  hasAuth,
-  getAccessToken,
-  getRefreshToken,
+  commonURL: commonURL,
+  saveAuthFromResponse: saveAuthFromResponse,
+  clearAuth: clearAuth,
+  hasAuth: hasAuth,
+  getAccessToken: getAccessToken,
+  getRefreshToken: getRefreshToken,
   getUrlParam(name) {
     let reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
     let r = window.location.search.substr(1).match(reg);
@@ -240,4 +240,8 @@ const util = {
     }
     return null;
   }
-}
+};
+
+// 确保util对象在全局范围内可用
+window.util = util;;
+

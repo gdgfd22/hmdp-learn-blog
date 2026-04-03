@@ -87,17 +87,19 @@
 <script>
   const app = new Vue({
     el: "#app",
-    data: {
-      user: "",
-      activeName: "1",
-      info: {},
-      blogs: [],
-      blogs2: [],
-      params: {
-        minTime: 0,
-        offset: 0
-      },
-      isReachBottom: false,
+    data() {
+      return {
+        user: "",
+        activeName: "1",
+        info: {},
+        blogs: [],
+        blogs2: [],
+        params: {
+          minTime: 0,
+          offset: 0
+        },
+        isReachBottom: false,
+      };
     },
     created() {
       this.queryUser();
@@ -159,12 +161,44 @@
         location.href = 'info-edit.html'
       },
       logout() {
-        axios.post("/user/logout")
+        // 直接从sessionStorage获取refreshToken，不依赖util对象
+        const refreshToken = sessionStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          // 如果没有refreshToken，直接清除本地认证信息并跳转
+          sessionStorage.removeItem('accessToken');
+          sessionStorage.removeItem('refreshToken');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('tokenType');
+          sessionStorage.removeItem('accessTokenExpiresIn');
+          location.href = "/";
+          return;
+        }
+        
+        // 发送logout请求，确保refresh-token在请求头中
+        axios.post("/user/logout", {}, {
+          headers: {
+            "refresh-token": refreshToken
+          }
+        })
           .then(() => {
-            util.clearAuth();
-            location.href = "/"
+            // 清除本地认证信息
+            sessionStorage.removeItem('accessToken');
+            sessionStorage.removeItem('refreshToken');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('tokenType');
+            sessionStorage.removeItem('accessTokenExpiresIn');
+            location.href = "/";
           })
-          .catch(this.$message.error)
+          .catch(err => {
+            console.error("Logout error:", err);
+            // 即使服务器端logout失败，也要清除本地认证信息
+            sessionStorage.removeItem('accessToken');
+            sessionStorage.removeItem('refreshToken');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('tokenType');
+            sessionStorage.removeItem('accessTokenExpiresIn');
+            location.href = "/";
+          });
       },
       handleClick(r) {
         if (r.name === '4') {

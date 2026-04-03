@@ -37,10 +37,12 @@
 <script>
   const app = new Vue({
     el: "#app",
-    data: {
-      disabled: false,
-      codeBtnMsg: "Send code",
-      form: {}
+    data() {
+      return {
+        disabled: false,
+        codeBtnMsg: "Send code",
+        form: {}
+      };
     },
     methods: {
       login() {
@@ -48,12 +50,51 @@
           this.$message.error("Phone and code are required");
           return;
         }
+        console.log("Sending login request with:", this.form);
         axios.post("/user/login", this.form)
-          .then(({data, headers}) => {
-            util.saveAuthFromResponse(data, headers);
-            location.href = "/index.html";
-          })
-          .catch(err => this.$message.error(err));
+                .then(({data, headers}) => {
+                  console.log("Login response received:", data, headers);
+                  try {
+                    // 检查util对象是否存在且函数可用
+                    if (typeof util !== 'undefined' && typeof util.saveAuthFromResponse === 'function') {
+                      util.saveAuthFromResponse(data, headers);
+                    } else {
+                      // 手动处理认证信息存储
+                      if (data) {
+                        // 存储访问令牌
+                        sessionStorage.setItem("accessToken", data);
+                        sessionStorage.setItem("token", data);
+                      }
+                      // 从响应头中提取并存储其他认证信息
+                      if (headers) {
+                        const refreshToken = headers["refresh-token"];
+                        const tokenType = headers["token-type"];
+                        const expiresIn = headers["access-token-expires-in"];
+                        if (refreshToken) {
+                          sessionStorage.setItem("refreshToken", refreshToken);
+                        }
+                        if (tokenType) {
+                          sessionStorage.setItem("tokenType", tokenType);
+                        }
+                        if (expiresIn) {
+                          sessionStorage.setItem("accessTokenExpiresIn", expiresIn);
+                        }
+                      }
+                    }
+                    console.log("Auth saved, redirecting...");
+                    // 延迟跳转，确保认证信息已存储
+                    setTimeout(() => {
+                      window.location.replace("/index.html");
+                    }, 300);
+                  } catch (e) {
+                    console.error("Error during login process:", e);
+                    this.$message.error("Login process error: " + e.message);
+                  }
+                })
+                .catch(err => {
+                  console.error("Login error:", err);
+                  this.$message.error("Login failed: " + err);
+                });
       },
       goBack() {
         history.back();

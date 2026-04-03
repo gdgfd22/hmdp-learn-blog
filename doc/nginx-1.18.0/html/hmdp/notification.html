@@ -155,7 +155,7 @@
           </div>
           <div class="notification-content">{{item.content}}</div>
           <div class="notification-bottom">
-            <span>{{util.formatDateTime(item.createTime)}}</span>
+            <span>{{formatDateTime(item.createTime)}}</span>
             <span>{{item.readStatus === 0 ? 'Unread' : 'Read'}}</span>
           </div>
         </div>
@@ -173,12 +173,13 @@
 <script>
   const app = new Vue({
     el: "#app",
-    data: {
-      util,
-      current: 1,
-      total: 0,
-      unreadCount: 0,
-      notifications: []
+    data() {
+      return {
+        current: 1,
+        total: 0,
+        unreadCount: 0,
+        notifications: []
+      };
     },
     computed: {
       canLoadMore() {
@@ -229,6 +230,21 @@
             this.unreadCount = Math.max(0, this.unreadCount - 1);
           })
           .catch((err) => this.$message.error(err));
+      },
+      formatDateTime(value) {
+        if (!value) {
+          return "";
+        }
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return value;
+        }
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        const hh = String(date.getHours()).padStart(2, "0");
+        const mm = String(date.getMinutes()).padStart(2, "0");
+        return `${y}-${m}-${d} ${hh}:${mm}`;
       }
     }
   });

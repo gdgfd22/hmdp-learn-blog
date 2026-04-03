@@ -147,10 +147,12 @@
 
   const app = new Vue({
     el: "#app",
-    data: {
-      util,
-      shop: {},
-      vouchers: []
+    data() {
+      return {
+        util,
+        shop: {},
+        vouchers: []
+      };
     },
     created() {
       // 获取参数
