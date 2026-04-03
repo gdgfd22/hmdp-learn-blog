@@ -1,7 +1,6 @@
 package com.hmdp.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -14,8 +13,8 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
-@TableName("tb_blog_comments")
-public class BlogComments implements Serializable {
+@TableName("tb_notification")
+public class Notification implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -24,23 +23,15 @@ public class BlogComments implements Serializable {
 
     private Long userId;
 
-    @TableField(exist = false)
-    private String name;
+    private Long senderUserId;
 
-    @TableField(exist = false)
-    private String icon;
+    private String type;
 
-    private Long blogId;
-
-    private Long parentId;
-
-    private Long answerId;
+    private Long bizId;
 
     private String content;
 
-    private Integer liked;
-
-    private Boolean status;
+    private Integer readStatus;
 
     private LocalDateTime createTime;
 
