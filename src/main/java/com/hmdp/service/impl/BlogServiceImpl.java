@@ -1,6 +1,9 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.hmdp.analytics.BehaviorEvent;
+import com.hmdp.analytics.BehaviorEventPublisher;
+import com.hmdp.analytics.BehaviorEventType;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
@@ -47,6 +50,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Resource
     private SocialNotificationProducer socialNotificationProducer;
+
+    @Resource
+    private BehaviorEventPublisher behaviorEventPublisher;
 
     @Override
     public Result queryBlogById(Long id) {
@@ -95,14 +101,24 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
             if (success) {
                 stringRedisTemplate.opsForZSet().add(key, userId.toString(), System.currentTimeMillis());
                 sendLikeNotification(id, userId);
+                publishLikeEvent(id, userId, BehaviorEventType.BLOG_LIKE);
             }
         } else {
             boolean success = update().setSql("liked = liked - 1").eq("id", id).update();
             if (success) {
                 stringRedisTemplate.opsForZSet().remove(key, userId.toString());
+                publishLikeEvent(id, userId, BehaviorEventType.BLOG_UNLIKE);
             }
         }
         return Result.ok();
+    }
+
+    private void publishLikeEvent(Long blogId, Long userId, String eventType) {
+        Blog blog = getById(blogId);
+        behaviorEventPublisher.publish(BehaviorEvent.of(eventType)
+                .setUserId(userId)
+                .setBlogId(blogId)
+                .setShopId(blog == null ? null : blog.getShopId()));
     }
 
     private void sendLikeNotification(Long blogId, Long senderUserId) {

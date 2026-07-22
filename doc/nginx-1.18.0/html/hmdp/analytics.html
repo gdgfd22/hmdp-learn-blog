@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>点评平台实时运营看板</title>
+  <link rel="stylesheet" href="./css/analytics.css">
+</head>
+<body>
+<div id="app" class="dashboard">
+  <header>
+    <div>
+      <p class="eyebrow">REALTIME ANALYTICS</p>
+      <h1>点评平台实时运营看板</h1>
+      <p class="subtitle">行为事件与订单 CDC统一口径 · 金额单位为元</p>
+    </div>
+    <div class="toolbar">
+      <input type="date" v-model="metricDate">
+      <button @click="loadDashboard">刷新数据</button>
+      <a href="./index.html">返回首页</a>
+    </div>
+  </header>
+
+  <div v-if="error" class="error">{{ error }}</div>
+
+  <section class="cards">
+    <article><span>DAU</span><strong>{{ number(overview.dau) }}</strong><small>有效活跃用户</small></article>
+    <article><span>商户访问 PV</span><strong>{{ number(overview.shop_visit_pv) }}</strong><small>详情页访问</small></article>
+    <article><span>订单量</span><strong>{{ number(overview.order_count) }}</strong><small>最终入库订单</small></article>
+    <article><span>支付订单</span><strong>{{ number(overview.paid_order_count) }}</strong><small>存在支付时间</small></article>
+    <article><span>GMV</span><strong>¥ {{ money(overview.gmv) }}</strong><small>支付成功金额</small></article>
+    <article><span>秒杀成功率</span><strong>{{ percent(overview.seckill_success_rate) }}</strong><small>入库订单 / 请求</small></article>
+  </section>
+
+  <main class="grid">
+    <section class="panel wide">
+      <div class="panel-title"><h2>商户热度排行</h2><span>UV + 净点赞×3 + 订单×5</span></div>
+      <div class="rank" v-for="(item, index) in shopRank" :key="item.shop_id">
+        <b>{{ index + 1 }}</b><span>商户 #{{ item.shop_id }}</span>
+        <div class="bar"><i :style="barWidth(item.hot_score, shopMax)"></i></div>
+        <em>{{ number(item.hot_score) }}</em>
+      </div>
+      <p v-if="!shopRank.length" class="empty">暂无商户指标</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title"><h2>互动趋势</h2><span>当天累计</span></div>
+      <dl class="metrics">
+        <div><dt>点赞</dt><dd>{{ number(overview.like_count) }}</dd></div>
+        <div><dt>取消点赞</dt><dd>{{ number(overview.unlike_count) }}</dd></div>
+        <div><dt>新增关注</dt><dd>{{ number(overview.follow_count) }}</dd></div>
+        <div><dt>取消关注</dt><dd>{{ number(overview.unfollow_count) }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel wide">
+      <div class="panel-title"><h2>优惠券转化漏斗</h2><span>曝光 → 请求 → 下单 → 支付</span></div>
+      <table>
+        <thead><tr><th>优惠券</th><th>曝光</th><th>请求</th><th>订单</th><th>支付</th><th>支付转化率</th></tr></thead>
+        <tbody>
+          <tr v-for="item in voucherFunnel" :key="item.voucher_id">
+            <td>#{{ item.voucher_id }}</td><td>{{ number(item.exposure_count) }}</td>
+            <td>{{ number(item.seckill_request_count) }}</td><td>{{ number(item.order_count) }}</td>
+            <td>{{ number(item.paid_order_count) }}</td><td>{{ percent(item.pay_rate) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-if="!voucherFunnel.length" class="empty">暂无漏斗数据</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title"><h2>热门博客</h2><span>浏览 UV + 净点赞×3</span></div>
+      <div class="rank blog-rank" v-for="(item, index) in blogRank" :key="item.blog_id">
+        <b>{{ index + 1 }}</b><span>博客 #{{ item.blog_id }}</span>
+        <div class="bar"><i :style="barWidth(item.hot_score, blogMax)"></i></div>
+        <em>{{ number(item.hot_score) }}</em>
+      </div>
+      <p v-if="!blogRank.length" class="empty">暂无博客指标</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title"><h2>数据质量</h2><span>最近 20 条</span></div>
+      <div class="quality" v-for="item in quality" :key="item.check_time + item.check_name">
+        <span>{{ item.check_name }}</span><b>{{ number(item.error_count) }}</b>
+        <small>{{ item.sample_message || '—' }}</small>
+      </div>
+      <p v-if="!quality.length" class="empty">未发现质量异常</p>
+    </section>
+  </main>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/common.js"></script>
+<script>
+new Vue({
+  el: '#app',
+  data: {
+    metricDate: new Date().toISOString().slice(0, 10),
+    overview: {}, shopRank: [], blogRank: [], voucherFunnel: [], quality: [], error: ''
+  },
+  computed: {
+    shopMax() { return Math.max(...this.shopRank.map(item => Number(item.hot_score) || 0), 1); },
+    blogMax() { return Math.max(...this.blogRank.map(item => Number(item.hot_score) || 0), 1); }
+  },
+  created() { this.loadDashboard(); },
+  methods: {
+    loadDashboard() {
+      this.error = '';
+      axios.get('/analytics/dashboard', { params: { date: this.metricDate } })
+        .then(({data}) => {
+          this.overview = (data.overview || [])[0] || {};
+          this.shopRank = data.shopRank || [];
+          this.blogRank = data.blogRank || [];
+          this.voucherFunnel = data.voucherFunnel || [];
+          this.quality = data.quality || [];
+        })
+        .catch(error => { this.error = String(error || '指标加载失败'); });
+    },
+    number(value) { return Number(value || 0).toLocaleString('zh-CN'); },
+    money(value) { return (Number(value || 0) / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2}); },
+    percent(value) { return Number(value || 0).toFixed(2) + '%'; },
+    barWidth(value, max) { return { width: Math.max(4, Number(value || 0) * 100 / max) + '%' }; }
+  }
+});
+</script>
+</body>
+</html>

@@ -42,6 +42,18 @@ public class VoucherOrder implements Serializable {
      */
     private Long voucherId;
 
+    /** 商户快照，避免实时计算时重复关联维表。 */
+    private Long shopId;
+
+    /** 券面值、实付、优惠和退款金额，单位均为分。 */
+    private Long originalAmount;
+
+    private Long payAmount;
+
+    private Long discountAmount;
+
+    private Long refundAmount;
+
     /**
      * 支付方式 1：余额支付；2：支付宝；3：微信
      */

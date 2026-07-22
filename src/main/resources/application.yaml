@@ -5,9 +5,9 @@ spring:
     name: hmdp
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/hmdp?useSSL=false&serverTimezone=UTC
-    username: root
-    password: 1234
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:hmdp}?useSSL=false&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:1234}
   redis:
     host: 127.0.0.1
     port: 6379
@@ -26,6 +26,13 @@ spring:
     listener:
       simple:
         acknowledge-mode: auto
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:9092}
+    producer:
+      acks: all
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
   jackson:
     default-property-inclusion: non_null
 mybatis-plus:
@@ -40,3 +47,12 @@ hmdp:
     secret: hmdp-demo-jwt-secret-please-change
     access-token-ttl-minutes: 30
     refresh-token-ttl-days: 7
+  analytics:
+    events:
+      enabled: ${ANALYTICS_EVENTS_ENABLED:false}
+      topic: ${ANALYTICS_EVENTS_TOPIC:ods_behavior_event}
+    query:
+      enabled: ${ANALYTICS_QUERY_ENABLED:false}
+      url: jdbc:mysql://${DORIS_HOST:127.0.0.1}:${DORIS_QUERY_PORT:9030}/${DORIS_DATABASE:hmdp_analytics}?useSSL=false&serverTimezone=Asia/Shanghai
+      username: ${DORIS_USERNAME:root}
+      password: ${DORIS_PASSWORD:}

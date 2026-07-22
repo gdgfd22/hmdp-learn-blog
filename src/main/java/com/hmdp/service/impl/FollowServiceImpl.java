@@ -1,6 +1,9 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.hmdp.analytics.BehaviorEvent;
+import com.hmdp.analytics.BehaviorEventPublisher;
+import com.hmdp.analytics.BehaviorEventType;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
@@ -38,6 +41,9 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
     @Resource
     private SocialNotificationProducer socialNotificationProducer;
 
+    @Resource
+    private BehaviorEventPublisher behaviorEventPublisher;
+
     @Override
     public Result isFollow(Long followUserId) {
         Long userId = UserHolder.getUser().getId();
@@ -59,12 +65,14 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
             }
             stringRedisTemplate.opsForSet().add(key, followUserId.toString());
             sendFollowNotification(userId, followUserId);
+            publishFollowEvent(userId, followUserId, BehaviorEventType.FOLLOW);
         } else {
             boolean success = remove(new QueryWrapper<Follow>()
                     .eq("user_id", userId)
                     .eq("follow_user_id", followUserId));
             if (success) {
                 stringRedisTemplate.opsForSet().remove(key, followUserId.toString());
+                publishFollowEvent(userId, followUserId, BehaviorEventType.UNFOLLOW);
             }
         }
         return Result.ok();
@@ -84,6 +92,12 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
                 .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
                 .collect(Collectors.toList());
         return Result.ok(users);
+    }
+
+    private void publishFollowEvent(Long userId, Long followUserId, String eventType) {
+        behaviorEventPublisher.publish(BehaviorEvent.of(eventType)
+                .setUserId(userId)
+                .addProperty("followUserId", followUserId));
     }
 
     private void sendFollowNotification(Long senderUserId, Long receiverUserId) {

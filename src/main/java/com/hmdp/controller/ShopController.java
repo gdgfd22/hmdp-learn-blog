@@ -3,6 +3,9 @@ package com.hmdp.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.hmdp.analytics.BehaviorEvent;
+import com.hmdp.analytics.BehaviorEventPublisher;
+import com.hmdp.analytics.BehaviorEventType;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
 import com.hmdp.service.IShopService;
@@ -10,6 +13,7 @@ import com.hmdp.utils.SystemConstants;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * <p>
@@ -26,16 +30,25 @@ public class ShopController {
     @Resource
     public IShopService shopService;
 
+    @Resource
+    private BehaviorEventPublisher behaviorEventPublisher;
+
     /**
      * 根据id查询商铺信息
      * @param id 商铺id
      * @return 商铺详情数据
      */
     @GetMapping("/{id}")
-    public Result queryShopById(@PathVariable("id") Long id) {
+    public Result queryShopById(@PathVariable("id") Long id, HttpServletRequest request) {
         // 这里是直接查询数据库
 //        return Result.ok(shopService.getById(id));
-        return Result.ok(shopService.queryById(id));
+        Result result = shopService.queryById(id);
+        if (Boolean.TRUE.equals(result.getSuccess())) {
+            behaviorEventPublisher.publish(BehaviorEvent.of(BehaviorEventType.SHOP_VIEW)
+                    .setShopId(id)
+                    .setDeviceId(request.getHeader("X-Device-Id")));
+        }
+        return result;
     }
 
     /**

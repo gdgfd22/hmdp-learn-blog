@@ -2,6 +2,9 @@ package com.hmdp.controller;
 
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.hmdp.analytics.BehaviorEvent;
+import com.hmdp.analytics.BehaviorEventPublisher;
+import com.hmdp.analytics.BehaviorEventType;
 import com.hmdp.dto.Result;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
@@ -13,6 +16,7 @@ import com.hmdp.utils.UserHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
@@ -31,6 +35,8 @@ public class BlogController {
     private IBlogService blogService;
     @Resource
     private IUserService userService;
+    @Resource
+    private BehaviorEventPublisher behaviorEventPublisher;
 
     @PostMapping
     public Result saveBlog(@RequestBody Blog blog) {
@@ -43,8 +49,16 @@ public class BlogController {
         return blogService.saveBlog(blog);
     }
     @GetMapping("/{id}")
-    public Result getBlog(@PathVariable("id") Long id) {
-        return blogService.queryBlogById(id);
+    public Result getBlog(@PathVariable("id") Long id, HttpServletRequest request) {
+        Result result = blogService.queryBlogById(id);
+        if (Boolean.TRUE.equals(result.getSuccess()) && result.getData() instanceof Blog) {
+            Blog blog = (Blog) result.getData();
+            behaviorEventPublisher.publish(BehaviorEvent.of(BehaviorEventType.BLOG_VIEW)
+                    .setBlogId(id)
+                    .setShopId(blog.getShopId())
+                    .setDeviceId(request.getHeader("X-Device-Id")));
+        }
+        return result;
 
     }
 
