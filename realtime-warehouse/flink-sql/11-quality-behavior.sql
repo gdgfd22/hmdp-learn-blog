@@ -53,7 +53,8 @@ CREATE TABLE quality_doris (
 );
 
 INSERT INTO quality_doris
-SELECT quality_time, 'INVALID_BEHAVIOR_EVENT', COUNT(*),
+SELECT COALESCE(quality_time, CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'yyyy-MM-dd HH:mm:00') AS TIMESTAMP(3))),
+       'INVALID_BEHAVIOR_EVENT', COUNT(*),
        MAX(CONCAT(error_reason, ':', COALESCE(event_id, 'NULL')))
 FROM invalid_behavior
-GROUP BY quality_time;
+GROUP BY COALESCE(quality_time, CAST(DATE_FORMAT(CURRENT_TIMESTAMP, 'yyyy-MM-dd HH:mm:00') AS TIMESTAMP(3)));

@@ -77,10 +77,24 @@ services:
       analytics_net:
     restart: "no"
 
+  flink-volume-init:
+    image: alpine:3.20
+    user: "0:0"
+    command: ["sh", "-c", "chown -R 9999:9999 /opt/flink/checkpoints /opt/flink/savepoints"]
+    volumes:
+      - flink_checkpoints:/opt/flink/checkpoints
+      - flink_savepoints:/opt/flink/savepoints
+    networks:
+      analytics_net:
+    restart: "no"
+
   flink-jobmanager:
     build:
       context: ./docker/flink
     command: jobmanager
+    depends_on:
+      flink-volume-init:
+        condition: service_completed_successfully
     environment:
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: flink-jobmanager
@@ -108,11 +122,14 @@ services:
       context: ./docker/flink
     command: taskmanager
     depends_on:
-      - flink-jobmanager
+      flink-volume-init:
+        condition: service_completed_successfully
+      flink-jobmanager:
+        condition: service_started
     environment:
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 4
+        taskmanager.numberOfTaskSlots: 16
         parallelism.default: 2
         state.backend.type: rocksdb
         execution.checkpointing.storage: filesystem

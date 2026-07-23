@@ -61,7 +61,7 @@ mvn spring-boot:run
 - Flink Web UI：<http://localhost:18081>
 - Doris FE：<http://localhost:8030>
 - RabbitMQ：<http://localhost:15672>
-- 实时看板：<http://localhost/analytics.html>
+- 实时看板：<http://localhost:8080/analytics.html>
 
 如果复用本机已有 MySQL，需要先执行 `mysql/V2__analytics_order_snapshot.sql`，并为 Flink CDC账号授予 `SELECT、RELOAD、SHOW DATABASES、REPLICATION SLAVE、REPLICATION CLIENT`权限。
 

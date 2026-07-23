@@ -27,16 +27,16 @@ for ($i = 0; $i -lt $Count; $i++) {
     }
     $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
     $event = [ordered]@{
-        eventId = [guid]::NewGuid().ToString()
-        eventType = $eventType
-        userId = $userId
-        deviceId = "load-device-$userId"
-        shopId = $shopId
-        blogId = if ($eventType -like "BLOG*") { $blogId } else { $null }
-        voucherId = if ($eventType -in @("VOUCHER_EXPOSURE", "SECKILL_REQUEST")) { $voucherId } else { $null }
+        event_id = [guid]::NewGuid().ToString()
+        event_type = $eventType
+        user_id = $userId
+        device_id = "load-device-$userId"
+        shop_id = $shopId
+        blog_id = if ($eventType -like "BLOG*") { $blogId } else { $null }
+        voucher_id = if ($eventType -in @("VOUCHER_EXPOSURE", "SECKILL_REQUEST")) { $voucherId } else { $null }
         result = if ($eventType -eq "SECKILL_REQUEST") { "ACCEPTED" } else { $null }
-        eventTime = $now
-        ingestTime = $now
+        event_time = $now
+        ingest_time = $now
         properties = @{}
     }
     $events.Add(($event | ConvertTo-Json -Compress))

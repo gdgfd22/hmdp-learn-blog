@@ -1,5 +1,7 @@
 package com.hmdp.analytics;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -8,6 +10,7 @@ import java.util.Map;
 
 @Data
 @Accessors(chain = true)
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class BehaviorEvent {
 
     private String eventId;

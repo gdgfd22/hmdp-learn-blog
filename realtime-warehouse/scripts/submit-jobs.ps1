@@ -4,9 +4,13 @@ $composeFile = Join-Path $PSScriptRoot "..\docker-compose.yml"
 
 function Submit-FlinkSql([string]$file, [string]$name) {
     Write-Host "Submitting $name..."
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     $output = docker compose -f $composeFile exec -T flink-jobmanager ./bin/sql-client.sh -f "/opt/flink/sql/$file" 2>&1
+    $exitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousPreference
     $output | ForEach-Object { Write-Host $_ }
-    if ($LASTEXITCODE -ne 0 -or ($output -join "`n") -match "\[ERROR\]") {
+    if ($exitCode -ne 0 -or ($output -join "`n") -match "\[ERROR\]") {
         throw "$name submission failed"
     }
 }
@@ -18,4 +22,5 @@ Submit-FlinkSql "13-quality-voucher.sql" "voucher consistency quality job"
 Submit-FlinkSql "14-quality-duplicate.sql" "duplicate event quality job"
 Submit-FlinkSql "20-dws.sql" "DWS aggregation job"
 
-Write-Host "Jobs submitted. Inspect them at http://localhost:8081"
+$flinkPort = if ($env:FLINK_UI_PORT) { $env:FLINK_UI_PORT } else { "18081" }
+Write-Host "Jobs submitted. Inspect them at http://localhost:$flinkPort"
