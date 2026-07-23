@@ -1,0 +1,12 @@
+﻿{
+    "run_id":  "recovery-20260723174821-c91a6c",
+    "event_id_prefix":  "bench-recovery-20260723174821-c91a6c-",
+    "count":  20000,
+    "requested_rate_per_second":  500,
+    "actual_rate_per_second":  493.86,
+    "producer_start_epoch_ms":  1784800103531,
+    "first_event_epoch_ms":  1784800103563,
+    "last_event_epoch_ms":  1784800143521,
+    "producer_end_epoch_ms":  1784800144028,
+    "producer_elapsed_ms":  40497
+}

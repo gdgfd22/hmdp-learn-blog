@@ -1,0 +1,12 @@
+﻿{
+    "run_id":  "20260723173153-r1-fb75ba",
+    "event_id_prefix":  "bench-20260723173153-r1-fb75ba-",
+    "count":  30000,
+    "requested_rate_per_second":  1000,
+    "actual_rate_per_second":  985.87,
+    "producer_start_epoch_ms":  1784799117238,
+    "first_event_epoch_ms":  1784799117274,
+    "last_event_epoch_ms":  1784799147207,
+    "producer_end_epoch_ms":  1784799147668,
+    "producer_elapsed_ms":  30430
+}

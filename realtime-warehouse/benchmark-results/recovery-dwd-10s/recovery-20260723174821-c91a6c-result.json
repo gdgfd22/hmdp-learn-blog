@@ -1,0 +1,19 @@
+﻿{
+    "run_id":  "recovery-20260723174821-c91a6c",
+    "input_count":  20000,
+    "requested_rate_per_second":  500,
+    "expected_running_jobs":  1,
+    "kill_epoch_ms":  1784800109604,
+    "jobs_recovered_epoch_ms":  1784800133423,
+    "job_recovery_duration_ms":  23819,
+    "lag_recovered_epoch_ms":  1784800160480,
+    "lag_recovery_duration_ms":  50876,
+    "checkpoint_stable_epoch_ms":  1784800147438,
+    "checkpoint_stable_duration_ms":  37834,
+    "maximum_kafka_lag":  15124,
+    "final_kafka_lag":  0,
+    "doris_visible_rows":  20000,
+    "data_loss_count":  0,
+    "jobs_with_restored_checkpoint":  1,
+    "completed":  true
+}

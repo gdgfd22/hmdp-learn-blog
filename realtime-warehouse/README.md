@@ -115,21 +115,37 @@ ODS为 Kafka的 `ods_behavior_event` 以及 MySQL CDC源；DWD负责事件校验
 
 Checkpoint保存在共享 Docker Volume，Doris Sink启用 2PC。恢复时必须从最新 Checkpoint或 Savepoint启动；删除 Volume后不再具备原来的恢复语义。
 
-## 压测记录
-
-生成模拟行为事件：
+自动执行持续负载下的 TaskManager故障恢复：
 
 ```powershell
-.\scripts\generate-events.ps1 -Count 100000 -UserCount 5000 -ShopCount 14
+.\scripts\run-recovery-test.ps1 -Count 20000 -RatePerSecond 500
 ```
 
-脚本输出只是生产端生成耗时，不是链路延迟。正式记录以下实测项：
+脚本只有在新 TaskManager注册、作业恢复后产生新成功 Checkpoint、DWD消费者 Lag回落至 0且本轮数据全部写入 Doris时才判定成功。执行完整链路恢复前，应先确认所有参与测试的作业已有成功 Checkpoint且对应 Consumer Group没有历史积压。
+
+## 压测记录
+
+限速生成带独立运行标识的模拟行为事件：
+
+```powershell
+.\scripts\generate-events.ps1 -Count 30000 -UserCount 5000 -ShopCount 14 -RatePerSecond 1000
+```
+
+执行三轮正式压测：
+
+```powershell
+.\scripts\run-benchmark.ps1 -Rounds 3 -CountPerRound 30000 -RatePerSecond 1000
+```
+
+脚本输出并保存以下实测项：
 
 - 输入事件数和持续时间
-- Kafka各分区最大 Lag
-- Flink吞吐、忙碌/空闲/背压时间
+- Kafka消费者组最大 Lag
+- Flink Source计数与处理吞吐
 - Checkpoint持续时间、大小、失败次数
-- `Doris可见时间 - event_time` 的 P50、P95和最大值
-- 故障恢复耗时与恢复后对账差异
+- DWD数据在 Doris可见的 P50、P95上界和最大值
+- Doris整体有效可见吞吐与批次峰值
 
-没有实际记录前，不要在简历中填写数据量、性能提升比例或毫秒级延迟。
+当前实测报告见 [BENCHMARK_REPORT.md](BENCHMARK_REPORT.md)。报告中的可见性延迟包含轮询和查询耗时，是 DWD明细可见性上界；事件生成器直接写 Kafka，不包含 Spring Boot HTTP链路。
+
+简历只能引用报告中已经实测并注明环境、口径和边界的数据。

@@ -10,7 +10,8 @@ CREATE TABLE ods_behavior_event (
     'connector' = 'kafka', 'topic' = 'ods_behavior_event',
     'properties.bootstrap.servers' = 'kafka:29092',
     'properties.group.id' = 'hmdp-quality-duplicate-event',
-    'scan.startup.mode' = 'earliest-offset', 'format' = 'json', 'json.ignore-parse-errors' = 'true'
+    'scan.startup.mode' = 'group-offsets', 'properties.auto.offset.reset' = 'earliest',
+    'format' = 'json', 'json.ignore-parse-errors' = 'true'
 );
 
 CREATE TABLE quality_doris (

@@ -1,0 +1,12 @@
+﻿{
+    "run_id":  "20260723172019-r1-7c36cf",
+    "event_id_prefix":  "bench-20260723172019-r1-7c36cf-",
+    "count":  30000,
+    "requested_rate_per_second":  1000,
+    "actual_rate_per_second":  988.57,
+    "producer_start_epoch_ms":  1784798422319,
+    "first_event_epoch_ms":  1784798422343,
+    "last_event_epoch_ms":  1784798452298,
+    "producer_end_epoch_ms":  1784798452666,
+    "producer_elapsed_ms":  30347
+}

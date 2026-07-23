@@ -1,9 +1,9 @@
 SET 'execution.runtime-mode' = 'streaming';
 SET 'execution.attached' = 'false';
-SET 'execution.checkpointing.interval' = '30s';
+SET 'execution.checkpointing.interval' = '10s';
 SET 'execution.checkpointing.mode' = 'EXACTLY_ONCE';
 SET 'execution.checkpointing.timeout' = '5min';
-SET 'execution.checkpointing.min-pause' = '10s';
+SET 'execution.checkpointing.min-pause' = '3s';
 SET 'execution.checkpointing.max-concurrent-checkpoints' = '1';
 SET 'table.exec.state.ttl' = '8d';
 SET 'pipeline.name' = 'hmdp-dws-realtime-aggregate';
@@ -29,6 +29,7 @@ CREATE TABLE dwd_behavior (
     'topic' = 'dwd_behavior_event',
     'properties.bootstrap.servers' = 'kafka:29092',
     'properties.group.id' = 'hmdp-dws-behavior',
+    'properties.auto.offset.reset' = 'earliest',
     'key.format' = 'json',
     'value.format' = 'json',
     'value.fields-include' = 'ALL'
@@ -56,6 +57,7 @@ CREATE TABLE dwd_order (
     'topic' = 'dwd_order_change',
     'properties.bootstrap.servers' = 'kafka:29092',
     'properties.group.id' = 'hmdp-dws-order',
+    'properties.auto.offset.reset' = 'earliest',
     'key.format' = 'json',
     'value.format' = 'json',
     'value.fields-include' = 'ALL'

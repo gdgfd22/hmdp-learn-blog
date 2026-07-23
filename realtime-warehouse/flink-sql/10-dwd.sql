@@ -1,9 +1,9 @@
 SET 'execution.runtime-mode' = 'streaming';
 SET 'execution.attached' = 'false';
-SET 'execution.checkpointing.interval' = '30s';
+SET 'execution.checkpointing.interval' = '10s';
 SET 'execution.checkpointing.mode' = 'EXACTLY_ONCE';
 SET 'execution.checkpointing.timeout' = '5min';
-SET 'execution.checkpointing.min-pause' = '10s';
+SET 'execution.checkpointing.min-pause' = '3s';
 SET 'execution.checkpointing.max-concurrent-checkpoints' = '1';
 SET 'table.exec.state.ttl' = '2d';
 SET 'pipeline.name' = 'hmdp-dwd-clean-and-cdc';
@@ -30,7 +30,8 @@ CREATE TABLE ods_behavior_event (
     'topic' = 'ods_behavior_event',
     'properties.bootstrap.servers' = 'kafka:29092',
     'properties.group.id' = 'hmdp-dwd-behavior',
-    'scan.startup.mode' = 'earliest-offset',
+    'scan.startup.mode' = 'group-offsets',
+    'properties.auto.offset.reset' = 'earliest',
     'format' = 'json',
     'json.ignore-parse-errors' = 'true',
     'json.fail-on-missing-field' = 'false'

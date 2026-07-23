@@ -1,0 +1,17 @@
+﻿{
+    "test_started_at":  "2026-07-23 17:31:53 +08:00",
+    "test_finished_at":  "2026-07-23 17:34:16 +08:00",
+    "rounds":  3,
+    "count_per_round":  30000,
+    "total_events":  90000,
+    "requested_rate_per_second":  1000,
+    "average_actual_producer_rate_per_second":  985.99,
+    "average_flink_source_throughput_per_second":  986.05,
+    "average_doris_effective_throughput_per_second":  757.34,
+    "end_to_end_visibility_p95_upper_bound_across_rounds_ms":  21926,
+    "average_final_drain_latency_ms":  5767.33,
+    "maximum_kafka_lag":  9991,
+    "average_checkpoint_duration_ms":  950.97,
+    "result_json":  "E:\\Java_learn\\heimadianping\\hm-dianping\\realtime-warehouse\\benchmark-results\\optimized\\benchmark-20260723-173416.json",
+    "result_csv":  "E:\\Java_learn\\heimadianping\\hm-dianping\\realtime-warehouse\\benchmark-results\\optimized\\benchmark-20260723-173416.csv"
+}

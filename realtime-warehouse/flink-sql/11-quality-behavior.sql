@@ -14,7 +14,7 @@ CREATE TABLE ods_behavior_event (
     'connector' = 'kafka', 'topic' = 'ods_behavior_event',
     'properties.bootstrap.servers' = 'kafka:29092',
     'properties.group.id' = 'hmdp-quality-invalid-behavior',
-    'scan.startup.mode' = 'earliest-offset', 'format' = 'json',
+    'scan.startup.mode' = 'group-offsets', 'properties.auto.offset.reset' = 'earliest', 'format' = 'json',
     'json.ignore-parse-errors' = 'true', 'json.fail-on-missing-field' = 'false'
 );
 
