@@ -139,7 +139,49 @@ if (!success) {
 
 `voucher_id` 是秒杀券表主键，等值更新能定位到具体索引记录并加排他记录锁；`stock > 0` 作为条件把"判断 + 修改"合并成单条原子更新，受影响行数为 0 就表示库存不足，数据库不会把库存扣成负数。它没有 version 字段，不是经典乐观锁，但属于"基于条件更新的乐观并发控制"：先尝试原子修改，再根据受影响行数判断竞争是否成功。若条件无法命中索引，InnoDB 会扫描并锁住大量记录，效果接近锁全表。
 
-### 3.6 异步削峰：阻塞队列 + 单线程消费者
+### 3.6 唯一索引：一人一单的最终硬兜底
+
+代码里的 `count > 0` 是"先查再插"的**软校验**，并发下两个线程可能同时查到 0 再同时插入，它挡不住竞态。真正兜底"一人一单"的是订单表上的唯一索引：
+
+```sql
+CREATE TABLE `tb_voucher_order` (
+  `id` bigint(20) NOT NULL COMMENT '主键',
+  `user_id` bigint(20) UNSIGNED NOT NULL,
+  `voucher_id` bigint(20) UNSIGNED NOT NULL,
+  ...
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_voucher` (`user_id`, `voucher_id`) USING BTREE
+) ENGINE = InnoDB;
+```
+
+业务软校验与存储引擎硬约束的职责完全不同：
+
+| 校验 | 位置 | 性质 | 可靠性 |
+|---|---|---|---|
+| `count > 0` 先查再插 | 业务代码（事务内） | 软校验 | 并发下可同时通过，挡不住竞态 |
+| `uk_user_voucher` 唯一索引 | InnoDB 存储引擎 | 硬约束 | 数据库层面强制，无法绕过 |
+
+唯一索引的冲突检测发生在 **INSERT 语句执行时**，由 InnoDB 内部完成，与业务代码查不查 count 无关。即使 count 被并发绕过，第二个线程的 INSERT 也会撞上唯一索引直接失败——这就是"最终兜底"的含义。
+
+InnoDB 保证唯一性的原理：唯一索引是一棵独立的二级索引 B+Tree，叶子节点按 `(user_id, voucher_id)` 排序存储。INSERT 时在树中按序定位插入位置，重复判断就是一次 O(log n) 的树查找。并发插入同键时靠锁裁决：事务 A 插入 `(1, 100)` 成功并持有记录锁（未提交），事务 B 插入同键会在查找时发现 A 的记录并被 A 的锁阻塞；A 提交释放锁后 B 才醒来，确认键值重复，返回 1062 Duplicate entry。所以"唯一"不是碰运气，而是先到者持锁、后到者被锁挡住，最终只有一个事务能插进去。
+
+两个使用要点：
+
+1. **唯一索引对 NULL 失效**：MySQL 里 `NULL != NULL`，所以唯一索引允许多个 NULL 值。若 `user_id` 或 `voucher_id` 允许为 NULL，`(NULL, 100)` 可以插无数次，约束形同虚设。表结构里两个字段都必须是 `NOT NULL`——面试被问"唯一索引为什么没生效"，十有八九是字段可空或没走索引。
+2. **重复插入要按正常业务分支处理**，而不是让异常变成 500：
+
+```java
+try {
+    save(voucherOrder);
+} catch (DuplicateKeyException e) {   // 1062 Duplicate entry
+    log.warn("重复下单，userId={}, voucherId={}", userId, voucherId);
+    return Result.fail("您已购买过该优惠券");
+}
+```
+
+完整防重复的纵深防线：**Redis Lua 前置挡板（拦掉绝大多数并发重复）→ 用户维度分布式锁（串行化同一用户下单）→ 事务内 count 软校验（减少无谓扣库存）→ 条件扣库存 `stock > 0`（防超卖）→ `uk_user_voucher` 唯一索引（最终硬兜底）→ 捕获 DuplicateKeyException 按正常分支处理**。每一层都可能被绕过，但唯一索引这层不可能被绕过——这也是升级为 RabbitMQ 可靠消息化后，消息重复投递时保证消费幂等的那道最终防线。
+
+### 3.7 异步削峰：阻塞队列 + 单线程消费者
 
 ```java
 private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024 * 1024);
