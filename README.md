@@ -19,6 +19,10 @@
 | 08 | [实时数仓：Kafka + Flink + Doris 行为事件链路](articles/08-realtime-warehouse-pipeline.md) | 埋点、Flink CDC、ODS/DWD/DWS/ADS、指标口径、数据质量 |
 | 09 | [实时数仓压测与故障恢复](articles/09-realtime-benchmark-recovery.md) | 30s vs 10s Checkpoint、故障演练、MySQL-Doris 对账 |
 | 10 | [高频面试问答精选](articles/10-interview-qa-selected.md) | 认证/缓存/秒杀/消息/数仓/Java 八股精选问答 |
+| 11 | [MySQL 一条查询的执行流程与 JOIN 复杂度](articles/11-mysql-query-execution.md) | 连接器→存储引擎、INLJ/BNL/Hash Join |
+| 12 | [MySQL 索引原理：B+树、聚簇与二级、回表与覆盖、最左前缀与失效](articles/12-mysql-index.md) | 索引树结构、覆盖索引、8 种失效场景 |
+| 13 | [MySQL 三大日志：redo/undo/binlog 与两阶段提交](articles/13-mysql-log.md) | WAL、崩溃恢复、主从复制 |
+| 14 | [MySQL MVCC：版本链、ReadView 与隔离级别](articles/14-mysql-mvcc.md) | 快照读/当前读、读已提交 vs 可重复读 |
 
 ## 🗺️ 推荐阅读顺序
 
