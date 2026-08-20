@@ -4,9 +4,13 @@ import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.ExecutorService;
@@ -14,6 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import static com.hmdp.utils.RedisConstants.CACHE_INVALIDATION_CHANNEL;
 import static com.hmdp.utils.RedisConstants.CACHE_NULL_TTL;
 import static com.hmdp.utils.RedisConstants.LOCK_SHOP_KEY;
 
@@ -22,14 +27,25 @@ import static com.hmdp.utils.RedisConstants.LOCK_SHOP_KEY;
 public class CacheClient {
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final Cache<String, String> localDataCache;
+    private final Cache<String, Boolean> localNullCache;
     private static final ExecutorService CACHE_REBUILD_EXECUTOR = Executors.newFixedThreadPool(10);
 
-    public CacheClient(StringRedisTemplate stringRedisTemplate) {
+    public CacheClient(
+            StringRedisTemplate stringRedisTemplate,
+            @Qualifier("localDataCache") Cache<String, String> localDataCache,
+            @Qualifier("localNullCache") Cache<String, Boolean> localNullCache) {
         this.stringRedisTemplate = stringRedisTemplate;
+        this.localDataCache = localDataCache;
+        this.localNullCache = localNullCache;
     }
+
     public void set(String key, Object value,Long time, TimeUnit unit) {
-        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(value), time, unit);
+        String json = JSONUtil.toJsonStr(value);
+        stringRedisTemplate.opsForValue().set(key, json, time, unit);
+        putLocalData(key, json);
     }
+
     /**
      * 设置逻辑过期
      */
@@ -37,7 +53,9 @@ public class CacheClient {
         RedisData redisData = new RedisData();
         redisData.setData(value);
         redisData.setExpireTime(LocalDateTime.now().plusSeconds(unit.toSeconds(time)));
-        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(redisData));
+        String json = JSONUtil.toJsonStr(redisData);
+        stringRedisTemplate.opsForValue().set(key, json);
+        putLocalData(key, json);
     }
 
     /**
@@ -55,8 +73,8 @@ public class CacheClient {
     public <R,ID> R queryWithPassThrough(String keyPrefix,ID id,Class<R> type, Function<ID,R> dbfallback,Long time, TimeUnit unit) {
         //Function<ID,R> dbfallback,一个函数，接收 ID，返回 R
         String key = keyPrefix + id;
-        // 1.从Redis查询商铺缓存
-        String json = stringRedisTemplate.opsForValue().get(key);
+        // 1.依次查询Caffeine L1和Redis L2
+        String json = getCachedJson(key);
         // 2.判断是否存在
         if(StrUtil.isNotBlank(json)) {
             // 3.存在，直接返回
@@ -70,12 +88,12 @@ public class CacheClient {
         R r = dbfallback.apply(id);
         //5.不存在，返回错误
         if(r == null){
-            //将空值写入redis
-            stringRedisTemplate.opsForValue().set(key, "",CACHE_NULL_TTL,TimeUnit.SECONDS);
+            //将空值写入两级缓存
+            cacheNull(key);
             //返回错误信息
-            return r;
+            return null;
         }
-        //6.存在，写入redis
+        //6.存在，写入两级缓存
         this.set(key,r,time,unit);
         return r;
     }
@@ -95,11 +113,11 @@ public class CacheClient {
     public <R, ID> R queryWithLogicalExpire(
             String keyPrefix, ID id, Class<R> type, Function<ID, R> dbFallback, Long time, TimeUnit unit) {
         String key = keyPrefix + id;
-        // 1.从redis查询商铺缓存
-        String json = stringRedisTemplate.opsForValue().get(key);
+        // 1.依次查询Caffeine L1和Redis L2
+        String json = getCachedJson(key);
         // 2.判断是否存在
         if (StrUtil.isBlank(json)) {
-            // 3.存在，直接返回
+            // 3.不存在，直接返回
             return null;
         }
         // 4.命中，需要先把json反序列化为对象
@@ -123,10 +141,14 @@ public class CacheClient {
                 try {
                     // 查询数据库
                     R newR = dbFallback.apply(id);
-                    // 重建缓存
-                    this.setWithLogicalExpire(key, newR, time, unit);
+                    if (newR == null) {
+                        cacheNull(key);
+                    } else {
+                        // 重建两级缓存
+                        this.setWithLogicalExpire(key, newR, time, unit);
+                    }
                 } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    log.error("failed to rebuild logical-expire cache, key={}", key, e);
                 }finally {
                     // 释放锁
                     unlock(lockKey);
@@ -140,8 +162,8 @@ public class CacheClient {
     public <R, ID> R queryWithMutex(
             String keyPrefix, ID id, Class<R> type, Function<ID, R> dbFallback, Long time, TimeUnit unit) {
         String key = keyPrefix + id;
-        // 1.从redis查询商铺缓存
-        String shopJson = stringRedisTemplate.opsForValue().get(key);
+        // 1.依次查询Caffeine L1和Redis L2
+        String shopJson = getCachedJson(key);
         // 2.判断是否存在
         if (StrUtil.isNotBlank(shopJson)) {
             // 3.存在，直接返回
@@ -157,33 +179,108 @@ public class CacheClient {
         // 4.1.获取互斥锁
         String lockKey = LOCK_SHOP_KEY + id;
         R r = null;
+        boolean lockAcquired = false;
         try {
-            boolean isLock = tryLock(lockKey);
+            lockAcquired = tryLock(lockKey);
             // 4.2.判断是否获取成功
-            if (!isLock) {
+            if (!lockAcquired) {
                 // 4.3.获取锁失败，休眠并重试
                 Thread.sleep(50);
                 return queryWithMutex(keyPrefix, id, type, dbFallback, time, unit);
+            }
+            // 4.4.获取锁后双重检查，避免等待锁期间其他线程已经完成缓存重建
+            String latestJson = getCachedJson(key);
+            if (StrUtil.isNotBlank(latestJson)) {
+                return JSONUtil.toBean(latestJson, type);
+            }
+            if (latestJson != null) {
+                return null;
             }
             // 4.4.获取锁成功，根据id查询数据库
             r = dbFallback.apply(id);
             // 5.不存在，返回错误
             if (r == null) {
-                // 将空值写入redis
-                stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
+                // 将空值写入两级缓存
+                cacheNull(key);
                 // 返回错误信息
                 return null;
             }
-            // 6.存在，写入redis
+            // 6.存在，写入两级缓存
             this.set(key, r, time, unit);
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while rebuilding cache", e);
         }finally {
             // 7.释放锁
-            unlock(lockKey);
+            if (lockAcquired) {
+                unlock(lockKey);
+            }
         }
         // 8.返回
         return r;
+    }
+
+    /**
+     * 数据库事务提交后再失效缓存，避免事务回滚时误删缓存。
+     */
+    public void invalidateAfterCommit(String key) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    invalidate(key);
+                }
+            });
+            return;
+        }
+        invalidate(key);
+    }
+
+    /**
+     * 删除共享L2并广播消息，使所有应用实例清理自己的Caffeine L1。
+     */
+    public void invalidate(String key) {
+        evictLocal(key);
+        stringRedisTemplate.delete(key);
+        stringRedisTemplate.convertAndSend(CACHE_INVALIDATION_CHANNEL, key);
+    }
+
+    public void evictLocal(String key) {
+        localDataCache.invalidate(key);
+        localNullCache.invalidate(key);
+    }
+
+    private String getCachedJson(String key) {
+        String localJson = localDataCache.getIfPresent(key);
+        if (localJson != null) {
+            return localJson;
+        }
+        if (Boolean.TRUE.equals(localNullCache.getIfPresent(key))) {
+            return "";
+        }
+
+        String redisJson = stringRedisTemplate.opsForValue().get(key);
+        if (StrUtil.isNotBlank(redisJson)) {
+            putLocalData(key, redisJson);
+            return redisJson;
+        }
+        if (redisJson != null) {
+            localNullCache.put(key, Boolean.TRUE);
+            return "";
+        }
+        return null;
+    }
+
+    private void putLocalData(String key, String json) {
+        localNullCache.invalidate(key);
+        localDataCache.put(key, json);
+    }
+
+    private void cacheNull(String key) {
+        stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.SECONDS);
+        localDataCache.invalidate(key);
+        localNullCache.put(key, Boolean.TRUE);
     }
 
     private boolean tryLock(String key) {

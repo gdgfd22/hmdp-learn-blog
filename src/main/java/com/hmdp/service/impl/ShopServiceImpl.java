@@ -73,8 +73,8 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         }
         // 1.更新数据库
         updateById(shop);
-        // 2.删除缓存
-        stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
+        // 2.事务提交后删除Redis L2，并广播清理所有实例的Caffeine L1
+        cacheClient.invalidateAfterCommit(CACHE_SHOP_KEY + id);
         return Result.ok();
     }
 

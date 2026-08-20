@@ -43,6 +43,11 @@ logging:
   level:
     com.hmdp: debug
 hmdp:
+  cache:
+    local:
+      maximum-size: ${LOCAL_CACHE_MAXIMUM_SIZE:10000}
+      expire-after-write-seconds: ${LOCAL_CACHE_TTL_SECONDS:30}
+      null-expire-after-write-seconds: ${LOCAL_NULL_CACHE_TTL_SECONDS:5}
   jwt:
     secret: hmdp-demo-jwt-secret-please-change
     access-token-ttl-minutes: 30
