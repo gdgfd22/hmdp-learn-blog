@@ -5,6 +5,23 @@
 
 > ⚠️ **诚实声明**：这是个人学习项目，全部功能在本地单机 / Docker Compose 环境验证，不属于生产系统；文中的压测数据均为固定环境实测结果，不代表生产容量。
 
+## ✨ React 前端与实时分析看板
+
+项目已新增 React + Vite 前端，保留 Spring Boot 业务接口，并为数据服务不可用的场景提供演示数据回退。
+
+- **代码分支**：[codex/frontend-analytics-redesign](https://github.com/gdgfd22/hmdp-learn-blog/tree/codex/frontend-analytics-redesign)
+- **查看改动 / 合并代码**：[创建 Pull Request](https://github.com/gdgfd22/hmdp-learn-blog/compare/main...codex/frontend-analytics-redesign)
+- **页面范围**：城市生活发现首页、小时级活跃趋势、商户热度排行、优惠券转化漏斗与数据质量监控
+- **学习代码来源**：[guojianwang/redis](https://gitee.com/guojianwang/redis)，本仓库在其基础上进行了学习实践、功能扩展与文档整理
+
+### 城市生活发现首页
+
+![城事点评 React 首页](assets/previews/home-page.png)
+
+### 实时运营分析看板
+
+![城事点评实时运营分析看板](assets/previews/analytics-dashboard.png)
+
 ## 📚 文章目录
 
 | 序号 | 文章 | 主题 |
