@@ -5,6 +5,8 @@
 
 > ⚠️ **诚实声明**：这是个人学习项目，全部功能在本地单机 / Docker Compose 环境验证，不属于生产系统；文中的压测数据均为固定环境实测结果，不代表生产容量。
 
+> 🤖 **Codex 协作说明**：本仓库采用人机协作方式开发。项目需求、学习目标与验收方向由仓库维护者提出；功能扩展与重构的主要代码由 **OpenAI Codex** 根据需求编写，并由仓库维护者确认与使用。React 前端、实时运营分析看板、页面交互、演示数据回退、构建配置及相关展示文档主要由 Codex 实现。
+
 ## ✨ React 前端与实时分析看板
 
 项目已新增 React + Vite 前端，保留 Spring Boot 业务接口，并为数据服务不可用的场景提供演示数据回退。
@@ -12,7 +14,7 @@
 - **代码分支**：[codex/frontend-analytics-redesign](https://github.com/gdgfd22/hmdp-learn-blog/tree/codex/frontend-analytics-redesign)
 - **查看改动 / 合并代码**：[创建 Pull Request](https://github.com/gdgfd22/hmdp-learn-blog/compare/main...codex/frontend-analytics-redesign)
 - **页面范围**：城市生活发现首页、小时级活跃趋势、商户热度排行、优惠券转化漏斗与数据质量监控
-- **学习代码来源**：[guojianwang/redis](https://gitee.com/guojianwang/redis)，本仓库在其基础上进行了学习实践、功能扩展与文档整理
+- **学习代码来源**：[guojianwang/redis](https://gitee.com/guojianwang/redis)，本仓库在其基础上进行了学习实践；后续主要扩展与重构代码由 OpenAI Codex 协作编写
 
 ### 城市生活发现首页
 
